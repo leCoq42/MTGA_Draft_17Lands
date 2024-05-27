@@ -215,8 +215,8 @@ Magic: The Gathering Arena draft tool that utilizes 17Lands data.
 
 ## Card Logic
 
-- **Win Rate Grades:** Using the non-zero GIHWR values, the application will calculate the mean and standard deviation. Based on the number of standard deviations from the mean, it will then assign a letter grade.
-    - Example: If the mean win rate for the set is 56.8% and the standard deviation is 4.68, then a card with a win rate of 62% will have a letter grade of B+ since it's between 1 standard deviation (`56.8 + 1 * 4.68 = 61.48%`) and 1.33 standard deviations (`56.8 + 1.33 * 4.68 = 63.02%`) from the mean (see the table below).
+- **Win Rate Grades:** The application will calculate the mean and standard deviation for all of the win rate fields (GIHWR, OHWR, GPWR, GDWR, etc.). Based on the number of standard deviations from the mean, it will then assign a letter grade.
+    - Example: If the mean OHWR for the set is 56.8% and the standard deviation is 4.68, then a card with an OHWR of 62% will have a letter grade of B+ since it's between 1 standard deviation (`56.8 + 1 * 4.68 = 61.48%`) and 1.33 standard deviations (`56.8 + 1.33 * 4.68 = 63.02%`) from the mean (see the table below).
 
 
 | Letter Grade     | Standard Deviations|
@@ -264,11 +264,16 @@ Magic: The Gathering Arena draft tool that utilizes 17Lands data.
             - The average CMC of all of the creatures must be 3.68 or less.      
             - The deck has 18 lands.
     - Notes:
-        - The CMC average and land requirements were derived from this [article](https://strategy.channelfireball.com/all-strategy/mtg/channelmagic-articles/how-many-lands-do-you-need-to-consistently-hit-your-land-drops/).
+        - The CMC average and land requirements were derived from this [article](https://www.channelfireball.com/article/How-Many-Lands-Do-You-Need-in-Your-Deck-An-Updated-Analysis/cd1c1a24-d439-4a8e-b369-b936edb0b38a/).
         - The deck distribution and CMC requirements may occasionally lead to the inclusion of cards that have lower performance or are considered less effective.
             Example: If the user possesses a pool of white and blue cards and the available 3-drops are Acquisition Octopus (53.7% win rate for WU) and Guardians of Oboro (50.7% win rate for WU), the deck suggester will include both of these cards to meet the 3-drop requirement for each deck archetype.
         - The rating is determined by calculating the combined GIHWR of all the cards and then subtracting penalties for not meeting the deck requirements.
         - The NEO creature sagas count as creatures.
+
+- **Wheel:** The "WHEEL" option intention is to show you the percentage likelihood of a specific card in a pack to be available the second time you see the pack (on the wheel).
+    - The logic in the code already existed and I do not know if a bug was found and it was not implemented, or if the creator wanted to simply improve upon it before releasing it.
+    - Only the first six packs are considered and cards with ALSA of <2 are automatically excluded.
+    - The math appears to follow closely what Sierkovitz published in this [article](https://mtgazone.com/how-to-wheel-in-drafts/)
 
 ## Troubleshooting
 
