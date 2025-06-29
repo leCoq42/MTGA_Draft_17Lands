@@ -1658,8 +1658,8 @@ class Overlay(ScaledWindow):
         popup.wm_geometry(f"+{location_x}+{location_y}")
 
         try:
-            label = Label(popup, text="Lorem Ipsum", style="MainSectionsBold.TLabel")
-            label.pack(expand=True, fill="both")
+            combine_button = Button(popup, text="Combine")
+            combine_button.pack(pady=self._scale_value(5), padx=self._scale_value(5))
             self.combine_sets_window_open = True
         except Exception as error:
             logger.error(error)
