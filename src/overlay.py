@@ -315,6 +315,7 @@ class Overlay(ScaledWindow):
         self.datamenu = tkinter.Menu(self.menubar, tearoff=0)
         self.datamenu.add_command(label="Download Dataset", command=self.__open_set_view_window)
         self.datamenu.add_command(label="Download Tier List", command=lambda : TierWindow(self.scale_factor, self.fonts_dict, self.__update_source_callback))
+        self.datamenu.add_command(label="Combine Sets", command=self.__open_combine_sets_window)
         self.cardmenu = tkinter.Menu(self.menubar, tearoff=0)
         self.cardmenu.add_command(
             label="Taken Cards", command=self.__open_taken_cards_window)
@@ -431,6 +432,7 @@ class Overlay(ScaledWindow):
 
         self.about_window_open = False
         self.sets_window_open = False
+        self.combine_sets_window_open = False
 
         self.deck_colors_option_frame = tkinter.Frame(self.root)
         self.deck_colors_options = OptionMenu(self.deck_colors_option_frame, self.deck_filter_selection,
@@ -1628,6 +1630,39 @@ class Overlay(ScaledWindow):
     def __close_set_view_window(self, popup):
         self.sets_window_open = False
         popup.destroy()
+
+    def __close_combine_sets_window(self, popup):
+        self.combine_sets_window_open = False
+        popup.destroy()
+
+    def __open_combine_sets_window(self):
+        # Don't open the window if it's already open
+        if self.combine_sets_window_open:
+            return
+
+        popup = tkinter.Toplevel()
+        popup.wm_title("Combine Sets")
+        popup.protocol("WM_DELETE_WINDOW",
+                       lambda window=popup: self.__close_combine_sets_window(window))
+        popup.resizable(width=False, height=True)
+        popup.attributes("-topmost", True)
+
+        location_x, location_y = identify_safe_coordinates(self.root,
+                                                           self._scale_value(
+                                                               1000),
+                                                           self._scale_value(
+                                                               170),
+                                                           self._scale_value(
+                                                               250),
+                                                           self._scale_value(20))
+        popup.wm_geometry(f"+{location_x}+{location_y}")
+
+        try:
+            label = Label(popup, text="Lorem Ipsum", style="MainSectionsBold.TLabel")
+            label.pack(expand=True, fill="both")
+            self.combine_sets_window_open = True
+        except Exception as error:
+            logger.error(error)
 
     def __open_set_view_window(self):
         '''Creates the Set View window'''
