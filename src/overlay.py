@@ -1627,6 +1627,53 @@ class Overlay(ScaledWindow):
         except Exception as error:
             logger.error(error)
 
+    def __update_combine_sets_tables(self):
+        '''Update the tables in the Combine Sets window with downloaded sets'''
+        try:
+            if not self.combine_sets_window_open:
+                return
+
+            # Clear existing rows
+            for row in self.set1_table.get_children():
+                self.set1_table.delete(row)
+            for row in self.set2_table.get_children():
+                self.set2_table.delete(row)
+
+            downloaded_sets = retrieve_local_set_list()
+            
+            # Populate Set 1 table
+            if downloaded_sets:
+                self.set1_table.config(height=min(len(downloaded_sets), 10))
+                for count, set_name in enumerate(downloaded_sets):
+                    self.set1_table.insert("", index=count, iid=count, values=(set_name,), tag=("",))
+                self.set1_table.bind("<<TreeviewSelect>>", lambda event: self.__process_combine_sets_table_click(event, self.set1_table, 1))
+            else:
+                self.set1_table.config(height=1)
+
+            # Populate Set 2 table
+            if downloaded_sets:
+                self.set2_table.config(height=min(len(downloaded_sets), 10))
+                for count, set_name in enumerate(downloaded_sets):
+                    self.set2_table.insert("", index=count, iid=count, values=(set_name,), tag=("",))
+                self.set2_table.bind("<<TreeviewSelect>>", lambda event: self.__process_combine_sets_table_click(event, self.set2_table, 2))
+            else:
+                self.set2_table.config(height=1)
+
+        except Exception as error:
+            logger.error(error)
+
+    def __process_combine_sets_table_click(self, event, table, set_number):
+        '''Process click event on the combine sets tables'''
+        try:
+            selected_item = table.focus()
+            if selected_item:
+                set_name = table.item(selected_item)['values'][0]
+                logger.info(f"Selected Set {set_number}: {set_name}")
+                # Here you would store the selected set for combination logic
+                # For now, just logging the selection
+        except Exception as error:
+            logger.error(error)
+
     def __close_set_view_window(self, popup):
         self.sets_window_open = False
         popup.destroy()
@@ -1658,8 +1705,40 @@ class Overlay(ScaledWindow):
         popup.wm_geometry(f"+{location_x}+{location_y}")
 
         try:
+            headers = {"SET": {"width": .90, "anchor": tkinter.W}}
+
+            set1_label = Label(popup, text="Set 1", style="SetOptions.TLabel", anchor="c")
+            set2_label = Label(popup, text="Set 2", style="SetOptions.TLabel", anchor="c")
+
+            set1_table_frame = tkinter.Frame(popup)
+            set1_scrollbar = tkinter.Scrollbar(set1_table_frame, orient=tkinter.VERTICAL)
+            set1_scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+            self.set1_table = self._create_header("set1_table", set1_table_frame, 0, self.fonts_dict["Sets.TableRow"], headers, self._scale_value(200), True, True, "Set.Treeview", True)
+            self.set1_table.config(yscrollcommand=set1_scrollbar.set)
+            set1_scrollbar.config(command=self.set1_table.yview)
+            self.set1_table.pack(expand=True, fill="both")
+
+            set2_table_frame = tkinter.Frame(popup)
+            set2_scrollbar = tkinter.Scrollbar(set2_table_frame, orient=tkinter.VERTICAL)
+            set2_scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+            self.set2_table = self._create_header("set2_table", set2_table_frame, 0, self.fonts_dict["Sets.TableRow"], headers, self._scale_value(200), True, True, "Set.Treeview", True)
+            self.set2_table.config(yscrollcommand=set2_scrollbar.set)
+            set2_scrollbar.config(command=self.set2_table.yview)
+            self.set2_table.pack(expand=True, fill="both")
+
             combine_button = Button(popup, text="Combine")
-            combine_button.pack(pady=self._scale_value(5), padx=self._scale_value(5))
+
+            set1_label.grid(row=0, column=0, sticky='nsew', pady=(5, 0))
+            set2_label.grid(row=0, column=1, sticky='nsew', pady=(5, 0))
+            set1_table_frame.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+            set2_table_frame.grid(row=1, column=1, sticky='nsew', padx=5, pady=5)
+            combine_button.grid(row=2, column=0, columnspan=2, pady=5, padx=5)
+
+            tkinter.Grid.columnconfigure(popup, 0, weight=1)
+            tkinter.Grid.columnconfigure(popup, 1, weight=1)
+            tkinter.Grid.rowconfigure(popup, 1, weight=1)
+
+            self.__update_combine_sets_tables()
             self.combine_sets_window_open = True
         except Exception as error:
             logger.error(error)
