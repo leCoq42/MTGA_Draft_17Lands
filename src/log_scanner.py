@@ -17,7 +17,8 @@ from src.utils import (
     json_find,
     Result,
     retrieve_local_set_list,
-    capture_screen_base64str
+    capture_screen_base64str,
+    detect_string,
 )
 
 if not os.path.exists(constants.DRAFT_LOG_FOLDER):
@@ -145,15 +146,13 @@ class ArenaScanner:
                         break
                     offset = log.tell()
                     self.search_offset = offset
-                    for start_string in constants.DRAFT_START_STRINGS:
-                        if start_string in line:
-                            self.draft_start_offset = offset
-                            string_offset = line.find(start_string)
-                            entry_string = line[string_offset + len(start_string):]
-                            event_data = process_json(entry_string)
-                            update, event_type, draft_id = self.__check_event(event_data)
-                            event_line = line
-
+                    start_offset = detect_string(line, constants.DRAFT_START_STRINGS)
+                    if start_offset != -1:
+                        self.draft_start_offset = offset
+                        entry_string = line[start_offset:]
+                        event_data = process_json(entry_string)
+                        update, event_type, draft_id = self.__check_event(event_data)
+                        event_line = line
             if update:
                 self.__new_log(self.draft_sets[0], event_type, draft_id)
                 self.draft_log.info(event_line)
@@ -272,8 +271,8 @@ class ArenaScanner:
             self.__draft_pack_search_premier_v2()
             self.__draft_picked_search_premier_v2()
         elif self.draft_type == constants.LIMITED_TYPE_DRAFT_QUICK:
-            self.__draft_pack_search_quick()
             self.__draft_picked_search_quick()
+            self.__draft_pack_search_quick()
         elif self.draft_type == constants.LIMITED_TYPE_DRAFT_TRADITIONAL:
             # Use OCR to retrieve P1P1
             if use_ocr:
@@ -328,7 +327,6 @@ class ArenaScanner:
         '''Parse premier draft string that contains the P1P1 pack data'''
         offset = self.pack_offset
         draft_data = object()
-        draft_string = "CardsInPack"
         pack_cards = []
         pack = 0
         pick = 0
@@ -343,9 +341,7 @@ class ArenaScanner:
                         break
                     offset = log.tell()
 
-                    string_offset = line.find(draft_string)
-
-                    if string_offset != -1:
+                    if detect_string(line, [constants.DRAFT_P1P1_STRING_PREMIER]) != -1:
                         # Remove any prefix (e.g. log timestamp)
                         start_offset = line.find("{\"id\":")
                         self.draft_log.info(line)
@@ -354,7 +350,7 @@ class ArenaScanner:
 
                         pack_cards = []
                         try:
-                            cards = json_find("CardsInPack", draft_data)
+                            cards = json_find(constants.DRAFT_P1P1_STRING_PREMIER, draft_data)
 
                             for card in cards:
                                 pack_cards.append(str(card))
@@ -395,7 +391,6 @@ class ArenaScanner:
         '''Parse the premier draft string that contains the player pick information'''
         offset = self.pick_offset
         draft_data = object()
-        draft_string = "[UnityCrossThreadLogger]==> Event_PlayerDraftMakePick "
         pack = 0
         pick = 0
         # Identify and print out the log lines that contain the draft packs
@@ -408,10 +403,7 @@ class ArenaScanner:
                     if not line:
                         break
                     offset = log.tell()
-
-                    string_offset = line.find(draft_string)
-
-                    if string_offset != -1:
+                    if detect_string(line, [constants.DRAFT_PICK_STRING_PREMIER]) != -1:
                         self.pick_offset = offset
                         start_offset = line.find("{\"id\"")
                         self.draft_log.info(line)
@@ -423,7 +415,10 @@ class ArenaScanner:
 
                             pack = int(json_find("Pack", draft_data))
                             pick = int(json_find("Pick", draft_data))
-                            card = str(json_find("GrpId", draft_data))
+                            if "GrpIds" in entry_string:
+                                card = json_find("GrpIds", draft_data)[0]
+                            else:
+                                card = str(json_find("GrpId", draft_data))
 
                             pack_index = (pick - 1) % 8
 
@@ -450,7 +445,6 @@ class ArenaScanner:
         '''Parse the premier draft string that contains the non-P1P1 pack data'''
         offset = self.pack_offset
         draft_data = object()
-        draft_string = "[UnityCrossThreadLogger]Draft.Notify "
         pack_cards = []
         pack = 0
         pick = 0
@@ -465,9 +459,7 @@ class ArenaScanner:
                         break
                     offset = log.tell()
 
-                    string_offset = line.find(draft_string)
-
-                    if string_offset != -1:
+                    if detect_string(line, [constants.DRAFT_PACK_STRING_PREMIER]) != -1:
                         self.pack_offset = offset
                         start_offset = line.find("{\"draftId\"")
                         self.draft_log.info(line)
@@ -513,7 +505,6 @@ class ArenaScanner:
         '''Parse the premier draft string that contains the non-P1P1 pack data'''
         offset = self.pack_offset
         draft_data = object()
-        draft_string = "[UnityCrossThreadLogger]Draft.Notify "
         pack_cards = []
         pack = 0
         pick = 0
@@ -528,14 +519,13 @@ class ArenaScanner:
                         break
                     offset = log.tell()
 
-                    string_offset = line.find(draft_string)
-
+                    string_offset = detect_string(line, [constants.DRAFT_PACK_STRING_PREMIER])
                     if string_offset != -1:
                         self.pack_offset = offset
                         self.draft_log.info(line)
                         pack_cards = []
                         # Identify the pack
-                        draft_data = json.loads(line[len(draft_string):])
+                        draft_data = json.loads(line[string_offset:])
                         try:
 
                             cards = str(draft_data["PackCards"]).split(',')
@@ -575,7 +565,6 @@ class ArenaScanner:
         '''Parse the premier draft string that contains the player pick data'''
         offset = self.pick_offset
         draft_data = object()
-        draft_string = "[UnityCrossThreadLogger]==> Draft.MakeHumanDraftPick "
         pack = 0
         pick = 0
         # Identify and print out the log lines that contain the draft packs
@@ -589,14 +578,13 @@ class ArenaScanner:
                         break
                     offset = log.tell()
 
-                    string_offset = line.find(draft_string)
-
+                    string_offset = detect_string(line, [constants.DRAFT_PICK_STRING_PREMIER_OLD])
                     if string_offset != -1:
                         self.draft_log.info(line)
                         self.pick_offset = offset
                         try:
                             # Identify the pack
-                            draft_data = json.loads(line[len(draft_string):])
+                            draft_data = json.loads(line[string_offset:])
 
                             request_data = json.loads(draft_data["request"])
                             param_data = request_data["params"]
@@ -631,7 +619,6 @@ class ArenaScanner:
         '''Parse the quick draft string that contains the current pack data'''
         offset = self.pack_offset
         draft_data = object()
-        draft_string = "DraftPack"
         pack_cards = []
         pack = 0
         pick = 0
@@ -646,9 +633,7 @@ class ArenaScanner:
                         break
                     offset = log.tell()
 
-                    string_offset = line.find(draft_string)
-
-                    if string_offset != -1:
+                    if detect_string(line, [constants.DRAFT_PACK_STRING_QUICK]) != -1:
                         self.pack_offset = offset
                         # Remove any prefix (e.g. log timestamp)
                         start_offset = line.find("{\"CurrentModule\"")
@@ -661,7 +646,7 @@ class ArenaScanner:
                         if draft_status == "PickNext":
                             pack_cards = []
                             try:
-                                cards = json_find("DraftPack", draft_data)
+                                cards = json_find(constants.DRAFT_PACK_STRING_QUICK, draft_data)
 
                                 for card in cards:
                                     pack_cards.append(str(card))
@@ -682,6 +667,12 @@ class ArenaScanner:
                                 self.current_pack = pack
                                 self.current_pick = pick
 
+                                # Transfer "PickedCards" to taken_cards if the previous picks were missed
+                                if not self.taken_cards:
+                                    picks = json_find("PickedCards", draft_data)
+                                    if picks:
+                                        self.taken_cards.extend(picks)
+
                                 if self.step_through:
                                     break
 
@@ -697,7 +688,6 @@ class ArenaScanner:
         '''Parse the quick draft string that contains the player pick data'''
         offset = self.pick_offset
         draft_data = object()
-        draft_string = "[UnityCrossThreadLogger]==> BotDraft_DraftPick "
         pack = 0
         pick = 0
         # Identify and print out the log lines that contain the draft packs
@@ -711,19 +701,21 @@ class ArenaScanner:
                         break
                     offset = log.tell()
 
-                    string_offset = line.find(draft_string)
-
+                    string_offset = detect_string(line, [constants.DRAFT_PICK_STRING_QUICK])
                     if string_offset != -1:
                         self.draft_log.info(line)
                         self.pick_offset = offset
                         try:
                             # Identify the pack
-                            entry_string = line[string_offset+len(draft_string):]
+                            entry_string = line[string_offset:]
                             draft_data = process_json(entry_string)
 
                             pack = int(json_find("PackNumber", draft_data)) + 1
                             pick = int(json_find("PickNumber", draft_data)) + 1
-                            card = str(json_find("CardId", draft_data))
+                            if "CardIds" in entry_string:
+                                card = json_find("CardIds", draft_data)[0]
+                            else:
+                                card = str(json_find("CardId", draft_data))
 
                             pack_index = (pick - 1) % 8
 
@@ -749,7 +741,6 @@ class ArenaScanner:
         '''Parse the traditional draft string that contains the P1P1 pack data'''
         offset = self.pack_offset
         draft_data = object()
-        draft_string = "CardsInPack"
         pack_cards = []
         pack = 0
         pick = 0
@@ -764,9 +755,7 @@ class ArenaScanner:
                         break
                     offset = log.tell()
 
-                    string_offset = line.find(draft_string)
-
-                    if string_offset != -1:
+                    if detect_string(line, [constants.DRAFT_P1P1_STRING_PREMIER]) != -1:
                         # Remove any prefix (e.g. log timestamp)
                         start_offset = line.find("{\"id\":")
                         self.draft_log.info(line)
@@ -776,7 +765,7 @@ class ArenaScanner:
                         pack_cards = []
                         try:
 
-                            cards = json_find("CardsInPack", draft_data)
+                            cards = json_find(constants.DRAFT_P1P1_STRING_PREMIER, draft_data)
 
                             for card in cards:
                                 pack_cards.append(str(card))
@@ -818,7 +807,6 @@ class ArenaScanner:
         '''Parse the traditional draft string that contains the player pick data'''
         offset = self.pick_offset
         draft_data = object()
-        draft_string = "[UnityCrossThreadLogger]==> Event_PlayerDraftMakePick "
         pack = 0
         pick = 0
         # Identify and print out the log lines that contain the draft packs
@@ -832,9 +820,7 @@ class ArenaScanner:
                         break
                     offset = log.tell()
 
-                    string_offset = line.find(draft_string)
-
-                    if string_offset != -1:
+                    if detect_string(line, [constants.DRAFT_PICK_STRING_PREMIER]) != -1:
                         self.pick_offset = offset
                         start_offset = line.find("{\"id\"")
                         self.draft_log.info(line)
@@ -846,7 +832,10 @@ class ArenaScanner:
 
                             pack = int(json_find("Pack", draft_data))
                             pick = int(json_find("Pick", draft_data))
-                            card = str(json_find("GrpId", draft_data))
+                            if "GrpIds" in entry_string:
+                                card = json_find("GrpIds", draft_data)[0]
+                            else:
+                                card = str(json_find("GrpId", draft_data))
 
                             pack_index = (pick - 1) % 8
 
@@ -873,7 +862,6 @@ class ArenaScanner:
         '''Parse the quick draft string that contains the non-P1P1 pack data'''
         offset = self.pack_offset
         draft_data = object()
-        draft_string = "[UnityCrossThreadLogger]Draft.Notify "
         pack_cards = []
         pack = 0
         pick = 0
@@ -888,9 +876,7 @@ class ArenaScanner:
                         break
                     offset = log.tell()
 
-                    string_offset = line.find(draft_string)
-
-                    if string_offset != -1:
+                    if detect_string(line, [constants.DRAFT_PACK_STRING_PREMIER]) != -1:
                         self.pack_offset = offset
                         start_offset = line.find("{\"draftId\"")
                         self.draft_log.info(line)
@@ -1008,7 +994,7 @@ class ArenaScanner:
                     set_code = file[0]
                     event_type = file[1]
                     user_group = file[2]
-                    location = file[5]
+                    location = file[6]
                     # Alchemy sets use the [Y##]{event_type} ({user_group}) naming scheme and everything else uses <event_type> ({user_group}) scheme
                     type_string = f"[{set_code[0:3]}]{event_type} ({user_group})" if re.findall(r"^[Yy]\d{2}", set_code) else f"{event_type} ({user_group})"
                     data_sources[type_string] = location
@@ -1020,23 +1006,6 @@ class ArenaScanner:
             data_sources = constants.DATA_SOURCES_NONE
 
         return data_sources
-
-    def retrieve_tier_source(self):
-        '''Return a list of tier files that can be used with the current active draft'''
-        tier_sources = []
-
-        try:
-            if self.draft_sets:
-                file = FE.search_local_files([constants.TIER_FOLDER], [
-                    constants.TIER_FILE_PREFIX])
-
-                if file:
-                    tier_sources = file
-
-        except Exception as error:
-            logger.error(error)
-
-        return tier_sources
 
     def retrieve_set_data(self, file):
         '''Retrieve set data from the set data files'''
@@ -1136,40 +1105,6 @@ class ArenaScanner:
         '''Return the card data for all of the cards that were picked during the draft'''
         taken_cards = self.set_data.get_data_by_id(self.taken_cards)
         return taken_cards
-
-    def retrieve_tier_data(self, files):
-        '''Parse a tier list file and return the tier data'''
-        tier_data = {}
-        tier_options = {}
-        count = 0
-        try:
-            for file in files:
-                if os.path.exists(file):
-                    with open(file, 'r', encoding="utf-8", errors="replace") as json_file:
-                        data = json.loads(json_file.read())
-                        if [i for i in self.draft_sets if i in data["meta"]["set"]]:
-                            tier_id = f"TIER{count}"
-                            tier_label = data["meta"]["label"]
-                            tier_key = f'{tier_id}: {tier_label}'
-                            tier_options[tier_key] = tier_id
-                            if data["meta"]["version"] == 1:
-                                for card_name, card_rating in data["ratings"].items():
-                                    data["ratings"][card_name] = {
-                                        "comment": ""}
-                                    data["ratings"][card_name]["rating"] = CL.format_tier_results(card_rating,
-                                                                                                  constants.RESULT_FORMAT_RATING,
-                                                                                                  constants.RESULT_FORMAT_GRADE)
-                            elif data["meta"]["version"] == 2:
-                                for card_name, card_rating in data["ratings"].items():
-                                    data["ratings"][card_name] = {
-                                        "comment": ""}
-                                    data["ratings"][card_name]["rating"] = card_rating
-                            tier_data[tier_id] = data
-                            count += 1
-
-        except Exception as error:
-            logger.error(error)
-        return tier_data, tier_options
 
     def retrieve_current_pack_and_pick(self):
         '''Return the current pack and pick numbers (p1p1 is current_pack=1, current_pick=1)'''

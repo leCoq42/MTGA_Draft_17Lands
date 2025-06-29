@@ -19,9 +19,6 @@ logger = create_logger()
 if not os.path.exists(constants.SETS_FOLDER):
     os.makedirs(constants.SETS_FOLDER)
 
-if not os.path.exists(constants.TIER_FOLDER):
-    os.makedirs(constants.TIER_FOLDER)
-
 if not os.path.exists(constants.TEMP_FOLDER):
     os.makedirs(constants.TEMP_FOLDER)
 
@@ -74,7 +71,10 @@ def search_arena_log_locations(input_location=None):
         if input_location:
             paths.extend(input_location)
 
-        if sys.platform == constants.PLATFORM_ID_OSX:
+        if sys.platform == constants.PLATFORM_ID_LINUX:
+            paths.extend([os.path.join(os.path.expanduser(
+                '~'), constants.LOG_LOCATION_LINUX)])
+        elif sys.platform == constants.PLATFORM_ID_OSX:
             paths.extend([os.path.join(os.path.expanduser(
                 '~'), constants.LOG_LOCATION_OSX)])
         else:
@@ -96,15 +96,22 @@ def search_arena_log_locations(input_location=None):
 
 
 def retrieve_arena_directory(log_location):
-    '''Searches the Player.log file for the Arena install location (windows only)'''
+    '''Searches the Player.log file for the Arena install location'''
     arena_directory = ""
     try:
         # Retrieve the arena directory
         with open(log_location, 'r', encoding="utf-8", errors="replace") as log_file:
             line = log_file.readline()
-            location = re.findall(r"'(.*?)/Managed'", line, re.DOTALL)
-            if location and os.path.exists(location[0]):
-                arena_directory = location[0]
+            if sys.platform == constants.PLATFORM_ID_WINDOWS:
+                # Windows: original regex
+                location = re.findall(r"'(.*?)/Managed'", line, re.DOTALL)
+            else:
+                # Other platforms: exclude 'X:/...'
+                location = re.findall(r"'.*?([/][^']+)/Managed'", line)
+            if location:
+                path = location[0]
+                if os.path.exists(path):
+                    arena_directory = path
 
     except Exception as error:
         logger.error(error)
@@ -326,7 +333,7 @@ class FileExtractor:
             paths = [os.path.join(directory, constants.LOCAL_DOWNLOADS_DATA)]
         elif sys.platform == constants.PLATFORM_ID_LINUX:
             if constants.LOCAL_DATA_FOLDER_PATH_LINUX:
-                directory = constants.LOCAL_DATA_FOLDER_PATH_LINUX
+                directory = constants.LOCAL_DATA_FOLDER_PATH_LINUX if not self.directory else self.directory
                 paths = [os.path.join(directory, constants.LOCAL_DOWNLOADS_DATA)]
             else:
                 paths = [] # program was giving errors on WSL without this

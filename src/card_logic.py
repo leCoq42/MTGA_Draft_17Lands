@@ -10,7 +10,6 @@ from src.logger import create_logger
 
 logger = create_logger()
 
-
 @dataclass
 class DeckMetrics:
     cmc_average: float = 0.0
@@ -72,11 +71,11 @@ class CardResult:
         result = "NA"
         try:
             card_name = card[constants.DATA_FIELD_NAME].replace('///', '//')
-            if card_name in self.tier_data[option][constants.DATA_SECTION_RATINGS]:
-                tier_data = self.tier_data[option][constants.DATA_SECTION_RATINGS][card_name]
-                result = tier_data["rating"]
+            if card_name in self.tier_data[option].ratings:
+                tier_data = self.tier_data[option].ratings[card_name]
+                result = tier_data.rating
                 # Append an asterisk to denote a comment
-                result = "*" + result if tier_data["comment"] else result
+                result = "*" + result if tier_data.comment else result
         except Exception as error:
             logger.error(error)
 
@@ -84,21 +83,20 @@ class CardResult:
 
     def __process_colors(self, card):
         """Retrieve card colors based on color identity (includes kicker, abilities, etc.) or mana cost"""
-        result = "NA"
-
         try:
-            if self.configuration.settings.color_identity_enabled:
-                result = "".join(card[constants.DATA_FIELD_COLORS])
-            elif constants.CARD_TYPE_LAND in card[constants.DATA_FIELD_TYPES]:
-                # For lands, the card mana cost can't be used to identify the card colors
-                result = "".join(card[constants.DATA_FIELD_COLORS])
-            else:
-                result = "".join(
-                    list(get_card_colors(card[constants.DATA_FIELD_MANA_COST]).keys()))
+            # Use color identity if enabled or handle lands (mana cost cannot determine colors)
+            if self.configuration.settings.color_identity_enabled or constants.CARD_TYPE_LAND in card[constants.DATA_FIELD_TYPES]:
+                return "".join(sorted(
+                    card[constants.DATA_FIELD_COLORS],
+                    key=constants.CARD_COLORS.index
+                ))
+
+            # Fallback: determine colors based on mana cost
+            return "".join(get_card_colors(card[constants.DATA_FIELD_MANA_COST]).keys())
+        
         except Exception as error:
             logger.error(error)
-
-        return result
+            return "NA"
 
     def __retrieve_wheel_sum(self, card_list):
         """Calculate the sum of all wheel percentage values for the card list"""
@@ -553,8 +551,7 @@ def calculate_color_affinity(deck_cards, color_filter, threshold, configuration)
             if color_filter in card[constants.DATA_FIELD_DECK_COLORS]:
                 gihwr = card[constants.DATA_FIELD_DECK_COLORS][color_filter][constants.DATA_FIELD_GIHWR]
                 if gihwr > threshold:
-                    mana_colors = get_card_colors(
-                        card[constants.DATA_FIELD_MANA_COST])
+                    mana_colors = get_card_colors(card[constants.DATA_FIELD_MANA_COST])
                     for color in mana_colors:
                         if color not in colors:
                             colors[color] = 0
@@ -685,7 +682,7 @@ def deck_rating(deck, deck_type, color, threshold):
             deck, color, [constants.CARD_TYPE_CREATURE], True, True, False)
 
         if len(filtered_cards) < recommended_creature_count:
-            rating -= (recommended_creature_count - len(filtered_cards)) * 50
+            rating -= (recommended_creature_count - len(filtered_cards)) * 10
 
         # Average CMC of the creatures is below the ideal cmc average
         cmc_average = deck_type.cmc_average
@@ -698,7 +695,7 @@ def deck_rating(deck, deck_type, color, threshold):
         cmc = total_cmc / total_cards
 
         if cmc > cmc_average:
-            rating -= 500
+            rating -= 50
 
         # Cards fit distribution
         minimum_distribution = deck_type.distribution

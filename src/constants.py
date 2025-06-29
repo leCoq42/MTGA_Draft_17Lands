@@ -15,8 +15,8 @@ CARD_COLOR_SYMBOL_NONE = "NC"
 
 CARD_COLORS = [
     CARD_COLOR_SYMBOL_WHITE,
-    CARD_COLOR_SYMBOL_BLACK,
     CARD_COLOR_SYMBOL_BLUE,
+    CARD_COLOR_SYMBOL_BLACK,
     CARD_COLOR_SYMBOL_RED,
     CARD_COLOR_SYMBOL_GREEN
 ]
@@ -154,16 +154,20 @@ UI_SIZE_DEFAULT = "100%"
 DRAFT_LOG_PREFIX = "DraftLog_"
 DRAFT_LOG_FOLDER = os.path.join(os.getcwd(), "Logs")
 
-TIER_FOLDER = os.path.join(os.getcwd(), "Tier")
-TIER_FILE_PREFIX = "Tier_"
-
 DRAFT_DETECTION_CATCH_ALL = ["Draft", "draft"]
 
-DRAFT_START_STRING_EVENT_JOIN = "[UnityCrossThreadLogger]==> Event_Join "
-DRAFT_START_STRING_BOT_DRAFT = "[UnityCrossThreadLogger]==> BotDraft_DraftStatus "
+DRAFT_START_STRING_PREMIER = "[UnityCrossThreadLogger]==> Event_Join "
+DRAFT_PICK_STRING_PREMIER = "[UnityCrossThreadLogger]==> Event_PlayerDraftMakePick "
+DRAFT_PICK_STRING_PREMIER_OLD = "[UnityCrossThreadLogger]==> Draft.MakeHumanDraftPick "
+DRAFT_P1P1_STRING_PREMIER = "CardsInPack"
+DRAFT_PACK_STRING_PREMIER = "[UnityCrossThreadLogger]Draft.Notify "
 
-DRAFT_START_STRINGS = [DRAFT_START_STRING_EVENT_JOIN,
-                       DRAFT_START_STRING_BOT_DRAFT]
+DRAFT_START_STRING_QUICK_DRAFT = "[UnityCrossThreadLogger]==> BotDraft_DraftStatus "
+DRAFT_PACK_STRING_QUICK = "DraftPack"
+DRAFT_PICK_STRING_QUICK = "[UnityCrossThreadLogger]==> BotDraft_DraftPick "
+
+DRAFT_START_STRINGS = [DRAFT_START_STRING_PREMIER,
+                       DRAFT_START_STRING_QUICK_DRAFT]
 
 DATA_SOURCES_NONE = {"None": ""}
 
@@ -203,13 +207,13 @@ LOCAL_DOWNLOADS_DATA = os.path.join("Downloads", "Raw")
 LOCAL_DATA_FILE_PREFIX_CARDS = "Raw_cards_"
 LOCAL_DATA_FILE_PREFIX_DATABASE = "Raw_CardDatabase_"
 
-LOCAL_DATABASE_TABLE_LOCALIZATION = "Localizations"
+LOCAL_DATABASE_TABLE_LOCALIZATION = "Localizations_enUS"
 LOCAL_DATABASE_TABLE_ENUMERATOR = "Enums"
 LOCAL_DATABASE_TABLE_CARDS = "Cards"
 
 LOCAL_DATABASE_LOCALIZATION_COLUMN_ID = "LocId"
 LOCAL_DATABASE_LOCALIZATION_COLUMN_FORMAT = "Formatted"
-LOCAL_DATABASE_LOCALIZATION_COLUMN_TEXT = "enUS"
+LOCAL_DATABASE_LOCALIZATION_COLUMN_TEXT = "Loc"
 
 LOCAL_DATABASE_ENUMERATOR_COLUMN_ID = "LocId"
 LOCAL_DATABASE_ENUMERATOR_COLUMN_TYPE = "Type"
@@ -278,6 +282,10 @@ LOG_LOCATION_WINDOWS = os.path.join('Users', getpass.getuser(
 ), "AppData", "LocalLow", "Wizards Of The Coast", "MTGA", LOG_NAME)
 LOG_LOCATION_OSX = os.path.join(
     "Library", "Logs", "Wizards of the Coast", "MTGA", LOG_NAME)
+LOG_LOCATION_LINUX = os.path.join(
+    ".local", "share", "Steam", "steamapps", "compatdata", 
+    "2141910", "pfx", "drive_c", "users", "steamuser", "AppData", "LocalLow", 
+    "Wizards Of The Coast", "MTGA", LOG_NAME)
 
 DEFAULT_GIHWR_AVERAGE = 0.0
 
